@@ -4,6 +4,7 @@ package com.company;
  * Created by Максим on 07.12.2015.
  */
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
@@ -13,31 +14,22 @@ import java.util.Scanner;
 public class JDBCTest {
 
     public static void main(String[] args)  {
-        Connection con= null;
-        Statement stmt;
-        ResultSet rs=null;
-        Scanner in = null;
+        Properties prop = loadPropertiesFile();
+        String driverClass = prop.getProperty("MYSQLJDBC.driver");
+        String url = prop.getProperty("MYSQLJDBC.url");
+        String username = prop.getProperty("MYSQLJDBC.username");
+        String password = prop.getProperty("MYSQLJDBC.password");
 
-        try {
-
-            Properties prop = loadPropertiesFile();
-
-            String driverClass = prop.getProperty("MYSQLJDBC.driver");
-            String url = prop.getProperty("MYSQLJDBC.url");
-            String username = prop.getProperty("MYSQLJDBC.username");
-            String password = prop.getProperty("MYSQLJDBC.password");
-
+        try{
             Class.forName(driverClass);
-            con = DriverManager.getConnection(url, username, password);
-
-
+            try (Connection con = DriverManager.getConnection(url, username, password)) {
             if (con != null) {
                 System.out.println("connection created successfully using properties file");
-                stmt = con.createStatement();
+                Statement stmt = con.createStatement();
                 String query = "select * from phonesbook";
-                rs = stmt.executeQuery(query);
-                if(rs!=null)
-                    while (rs.next()){
+                ResultSet rs = stmt.executeQuery(query);
+                if (rs != null)
+                    while (rs.next()) {
                         int id = rs.getInt(1);
                         String name = rs.getString(2);
                         String surname = rs.getString(3);
@@ -45,13 +37,12 @@ public class JDBCTest {
                         System.out.printf("Selected row: \n id: %d, name: %s, surname: %s, phone: %s  %n", id, name, surname, phone);
                     }
 
-                in = new Scanner(System.in);
+                Scanner in = new Scanner(System.in);
                 //PreparedStatement
-                PreparedStatement preparedStatement = null;
-                preparedStatement = con.prepareStatement("SELECT * FROM phonesbook where id = ?");
+                PreparedStatement preparedStatement = con.prepareStatement("SELECT * FROM phonesbook where id = ?");
 
                 System.out.println("Prepared statement:\n Write ID:");
-                preparedStatement.setInt(1,in.nextInt());
+                preparedStatement.setInt(1, in.nextInt());
                 ResultSet result = preparedStatement.executeQuery();
 
 
@@ -67,45 +58,49 @@ public class JDBCTest {
                 //Callabele statment
 
                 String sql = "{call getPhone (?, ?)}"; //gets phone by name
-                CallableStatement callableStatement = null;
-                callableStatement = con.prepareCall(sql);
+                CallableStatement callableStatement =  con.prepareCall(sql);
                 System.out.println("CallableStatement:\n Write name                                                                                                                                                                                                                                            :");
-                String name  = in.next();
-                callableStatement.setString(1,name);
+                String name = in.next();
+                callableStatement.setString(1, name);
                 callableStatement.registerOutParameter(2, java.sql.Types.VARCHAR);
                 callableStatement.execute();
                 String phone = callableStatement.getString(2);
                 System.out.println("Phone with name " + name + " is " + phone);
 
+                //batch update
+                System.out.println("Batch update:");
+                Statement stmt2 = con.createStatement();
+                stmt2.addBatch("UPDATE phonesbook SET NAME = UPPER(NAME) WHERE id = 1");
+                stmt2.addBatch("UPDATE phonesbook SET NAME = UPPER(NAME) WHERE id = 3");
+                stmt2.executeBatch();
+                ResultSet res = stmt2.executeQuery("select * from phonesbook");
+                if (res != null)
+                    while (res.next())
+                        System.out.printf("Selected row: \n id: %d, name: %s, surname: %s, phone: %s  %n", res.getInt(1), res.getString(2), res.getString(3), res.getString(4));
 
-                con.close();
-                in.close();
-            }
-            else
+
+            } else
                 System.out.println("Unable to create connection");
+        }
         }catch (SQLException e) {
             e.printStackTrace();
-        }
-        catch (IOException e) {
+        }catch (ClassNotFoundException e) {
             e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } finally {
-            in.close();
-            try {
-                con.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
 
-    public static Properties loadPropertiesFile() throws IOException {
+
+    public static Properties loadPropertiesFile() {
 
         Properties prop = new Properties();
-        InputStream in = new FileInputStream("./src/main/resources/database.properties");
-        prop.load(in);
-        in.close();
+        try(InputStream in = new FileInputStream("./src/main/resources/database.properties")){
+
+            prop.load(in);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return prop;
     }
 }
