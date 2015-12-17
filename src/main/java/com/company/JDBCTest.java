@@ -28,6 +28,7 @@ public class JDBCTest {
                 logger.info("Call function");
                 logger.info(UseStatements.callFunction(con));
 
+
                 logger.info("Statement");
                 logger.info(UseStatements.getStatementResult(con, "select * from phonesbook"));
 
