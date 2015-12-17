@@ -12,10 +12,9 @@ public class UseStatements {
     private static final Logger logger = Logger.getLogger(UseStatements.class.getName());
 
     public static String getStatementResult(Connection con, String query) {
-        ResultSet rs = null;
         String resStr = "Selected row: \n";
-        try (Statement stmt = con.createStatement();) {
-            rs = stmt.executeQuery(query);
+        try (Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
                 resStr+= rs.getInt(1)+"\t"+rs.getString(2)+"\t"+rs.getString(3)+"\t"+rs.getString(4)+"\n";
             }
@@ -26,16 +25,16 @@ public class UseStatements {
     }
 
     public static String getPreparedStatementResult(Connection con) {
-        ResultSet rs = null;
         String resStr = "Selected row: \n";
+        Scanner in = new Scanner(System.in);
+        System.out.print("Prepared statement:\n SELECT * FROM phonesbook where id = ?\n\n Write ID:");
+        int id = in.nextInt();
         try(PreparedStatement preparedStatement = con.prepareStatement("SELECT * FROM phonesbook where id = ?")) {
-            Scanner in = new Scanner(System.in);
-            System.out.print("Prepared statement:\n SELECT * FROM phonesbook where id = ?\n\n Write ID:");
-            int id = in.nextInt();
             preparedStatement.setInt(1, id);
-            rs = preparedStatement.executeQuery();
-            while (rs.next()) {
-                resStr+= rs.getInt(1)+"\t"+rs.getString(2)+"\t"+rs.getString(3)+"\t"+rs.getString(4)+"\n";
+            try(ResultSet rs= preparedStatement.executeQuery()) {
+                while (rs.next()) {
+                    resStr+= rs.getInt(1)+"\t"+rs.getString(2)+"\t"+rs.getString(3)+"\t"+rs.getString(4)+"\n";
+                }
             }
         } catch (SQLException e) {
             logger.error(e.getMessage());
@@ -61,6 +60,25 @@ public class UseStatements {
         }
         return res;
     }
+
+    public static String callFunction(Connection con) {
+        String sql = "{? = call concatHello(?)}";
+        String res="";
+
+        try(CallableStatement callableStatement = con.prepareCall(sql)) {
+            System.out.println("Call function:\n Write name ");
+            Scanner in = new Scanner(System.in);
+            String name = in.next();
+            callableStatement.registerOutParameter(1, java.sql.Types.VARCHAR);
+            callableStatement.setString(2, name);
+            callableStatement.execute();
+            return callableStatement.getString(1);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+        }
+        return res;
+    }
+
 
     public static String BatchUpdate(Connection con){
         String res = "";

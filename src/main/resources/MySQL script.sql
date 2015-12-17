@@ -32,3 +32,11 @@ END;
 $$
 DELIMITER ;
 
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `hello` $$
+CREATE PROCEDURE `hello`
+   (IN  text VARCHAR(25), OUT result VARCHAR(25))
+BEGIN
+   SELECT concatHello(text) INTO result
+END $$
+

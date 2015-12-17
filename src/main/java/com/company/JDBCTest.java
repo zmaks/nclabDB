@@ -23,6 +23,11 @@ public class JDBCTest {
 
         try (Connection con = getConnection(prop)) {
             if (con != null) {
+
+                //Call function
+                logger.info("Call function");
+                logger.info(UseStatements.callFunction(con));
+
                 logger.info("Statement");
                 logger.info(UseStatements.getStatementResult(con, "select * from phonesbook"));
 
